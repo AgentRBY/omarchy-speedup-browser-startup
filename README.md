@@ -2,7 +2,7 @@
 
 An [Omarchy](https://omarchy.org) shell plugin that keeps your default Chromium-based browser running with no windows, so new windows and links open almost instantly. It is the Linux counterpart of Edge's Startup Boost on Windows, which Linux builds don't ship.
 
-The trade-off is memory: the browser stays resident even with every window closed, about 0.5–0.8 GB. It also shows a tray icon, which you can hide from Omarchy's tray drawer.
+**The trade-off is memory**: the browser stays resident even with every window closed, about 0.5–0.8 GB. It also shows a tray icon, which you can hide from Omarchy's tray drawer.
 
 | Opening a browser window | Time to window | Time saved | Speedup |
 |---|---|---|---|
