@@ -42,11 +42,30 @@ Session restore ("Continue where you left off") keeps working. Tabs come back wi
 
 Tested on Microsoft Edge and Chromium. Firefox, Zen and Flatpak browsers are not supported: the plugin does nothing for them.
 
+## Dependencies
+
+Nothing to install beyond Omarchy itself. The plugin uses:
+
+- `bash` and `jq`.
+- A systemd user session (`systemd-run --user`) and Hyprland's `hyprctl`.
+- Omarchy's `omarchy-cmd-default-browser` and its browser launcher hand-off.
+
 ## Install
 
 ```sh
 omarchy plugin add https://github.com/AgentRBY/omarchy-speedup-browser-startup --enable
 ```
+
+## Remove
+
+```sh
+omarchy plugin remove io.github.agentrby.omarchy-speedup-browser-startup
+```
+
+- **No browser windows open:** the background browser stops right away.
+- **Windows open:** the browser keeps running until you log out. To stop it now, run `systemctl --user stop speedup-browser-startup`.
+
+The plugin leaves behind only your optional `~/.config/speedup-browser-startup-flags.conf`. Its runtime copy in `$XDG_RUNTIME_DIR` is cleared at logout.
 
 ## Usage
 
