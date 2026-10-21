@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.agentrby.browser-boost",
+  "name": "Browser Boost",
+  "version": "0.1.0",
+  "author": "agentrby",
+  "license": "MIT",
+  "description": "Keeps the default Chromium-based browser running without windows, so new windows and links open in about 0.1 s instead of a full browser start.",
+  "kinds": [
+    "service"
+  ],
+  "entryPoints": {
+    "service": "Service.qml"
+  },
+  "homepage": "https://github.com/AgentRBY/omarchy-browser-boost"
+}

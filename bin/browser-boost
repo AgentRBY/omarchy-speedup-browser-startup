@@ -1,0 +1,143 @@
+#!/bin/bash
+
+# Chromium shuts down a --no-startup-window launch once extensions load unless
+# a background app holds it. --keep-alive-for-test is the holder that needs no
+# app: Chromium's own tests use it to keep the browser alive with no windows.
+
+set -uo pipefail
+
+readonly JQ_FALSE=1
+unit=browser-boost
+pacman_lock=/var/lib/pacman/db.lck
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}"
+extra_flags_file="$config_dir/browser-boost-flags.conf"
+shell_config="$config_dir/omarchy/shell.json"
+plugin_id=$(jq -r .id "$(dirname "$(readlink -f "$0")")/../manifest.json")
+
+browser_command() {
+  local entry command
+
+  if ! command -v omarchy-cmd-default-browser >/dev/null; then
+    echo "omarchy-cmd-default-browser not found: this Omarchy version may have renamed it" >&2
+    return 1
+  fi
+
+  entry=$(omarchy-cmd-default-browser) || return 1
+  command=$(sed -n 's/^Exec=\([^ ]*\).*/\1/p' {"$HOME/.local","$HOME/.nix-profile",/usr}/share/applications/"$entry" 2>/dev/null | head -1)
+  type -P "$command"
+}
+
+profile_dir() {
+  case $1 in
+  /usr/bin/chromium) echo chromium ;;
+  /usr/bin/google-chrome-stable) echo google-chrome ;;
+  /usr/bin/brave) echo BraveSoftware/Brave-Browser ;;
+  /usr/bin/brave-origin) echo BraveSoftware/Brave-Origin ;;
+  /usr/bin/microsoft-edge-stable) echo microsoft-edge ;;
+  /usr/bin/vivaldi-stable) echo vivaldi ;;
+  *) return 1 ;;
+  esac
+}
+
+browser_running() {
+  local lock
+  lock=$(readlink "$config_dir/$(profile_dir "$1")/SingletonLock") || return 1
+  kill -0 "${lock##*-}" 2>/dev/null
+}
+
+main_pid() {
+  local pid
+  pid=$(systemctl --user show -p MainPID --value "$unit" 2>/dev/null)
+  ((pid > 0)) && echo "$pid"
+}
+
+has_windows() {
+  local clients
+  clients=$(hyprctl clients -j) || return 0
+
+  jq -e --argjson pid "$1" 'any(.[]; .pid == $pid)' <<<"$clients" >/dev/null
+  (($? != JQ_FALSE))
+}
+
+plugin_enabled() {
+  jq -e --arg id "$plugin_id" 'any(.plugins[]?; .id == $id)' "$shell_config" >/dev/null 2>&1
+  (($? != JQ_FALSE))
+}
+
+start() {
+  local browser extra_flags=()
+
+  systemctl --user -q is-active "$unit" && return 0
+  browser=$(browser_command) || return 1
+  profile_dir "$browser" >/dev/null || {
+    echo "default browser $browser is not a supported Chromium-based browser" >&2
+    return 1
+  }
+
+  if browser_running "$browser"; then
+    echo "$browser is already running outside browser-boost" >&2
+    return 1
+  fi
+
+  [[ -r $extra_flags_file ]] && read -ra extra_flags < <(sed 's/#.*//' "$extra_flags_file" | tr -s '[:space:]' ' ')
+
+  systemd-run --user --quiet --collect --unit="$unit" --slice=app-graphical.slice \
+    --property=KillMode=mixed --property=Restart=on-failure \
+    "$browser" --no-startup-window --keep-alive-for-test "${extra_flags[@]}"
+}
+
+stop() {
+  systemctl --user stop "$unit" 2>/dev/null
+  return 0
+}
+
+unit_browser() {
+  systemctl --user show -p ExecStart --value "$unit" | sed -n 's/.*path=\([^ ;]*\).*/\1/p'
+}
+
+needs_restart() {
+  local default_browser
+  [[ $(readlink "/proc/$1/exe") == *" (deleted)" ]] && return 0
+
+  default_browser=$(browser_command) || return 1
+  [[ $default_browser != "$(unit_browser)" ]]
+}
+
+check() {
+  local pid
+  pid=$(main_pid) || return 0
+  needs_restart "$pid" || return 0
+  [[ -e $pacman_lock ]] && return 0
+  has_windows "$pid" && return 0
+
+  stop
+  start
+}
+
+release() {
+  local pid
+  plugin_enabled && return 0
+  pid=$(main_pid) || return 0
+  has_windows "$pid" && return 0
+
+  stop
+}
+
+status() {
+  local pid
+  if ! pid=$(main_pid); then
+    echo "stopped"
+    return 0
+  fi
+
+  echo "running: pid $pid, $(readlink "/proc/$pid/exe")"
+  has_windows "$pid" && echo "windows: open" || echo "windows: none"
+}
+
+case ${1:-} in
+start | check | release | stop | status) "$1" ;;
+*)
+  echo "Usage: browser-boost start|check|release|stop|status" >&2
+  exit 1
+  ;;
+esac
