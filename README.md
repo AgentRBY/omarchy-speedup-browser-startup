@@ -2,11 +2,11 @@
 
 An [Omarchy](https://omarchy.org) shell plugin that keeps your default Chromium-based browser running with no windows, so new windows and links open almost instantly. It is the Linux counterpart of Edge's Startup Boost on Windows, which Linux builds don't ship.
 
-| Opening a browser window | Time to window |
-|---|---|
-| Fresh browser start | ~0.5 s |
-| With Speedup Browser Startup | ~0.08 s |
-| First window after all were closed (restores your session) | ~0.14 s |
+| Opening a browser window | Time to window | Time saved | Speedup |
+|---|---|---|---|
+| Fresh browser start | ~0.5 s | — | — |
+| With Speedup Browser Startup | ~0.08 s | 84% | 6.3× |
+| First window after all were closed (restores your session) | ~0.14 s | 72% | 3.6× |
 
 Measured with Microsoft Edge 155 on a Ryzen 7 5800X, from `omarchy-launch-browser` to the window being mapped in Hyprland.
 
