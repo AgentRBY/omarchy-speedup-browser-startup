@@ -7,10 +7,10 @@
 set -uo pipefail
 
 readonly JQ_FALSE=1
-unit=browser-boost
+unit=speedup-browser-startup
 pacman_lock=/var/lib/pacman/db.lck
 config_dir="${XDG_CONFIG_HOME:-$HOME/.config}"
-extra_flags_file="$config_dir/browser-boost-flags.conf"
+extra_flags_file="$config_dir/speedup-browser-startup-flags.conf"
 shell_config="$config_dir/omarchy/shell.json"
 plugin_id=$(jq -r .id "$(dirname "$(readlink -f "$0")")/../manifest.json")
 
@@ -75,7 +75,7 @@ start() {
   }
 
   if browser_running "$browser"; then
-    echo "$browser is already running outside browser-boost" >&2
+    echo "$browser is already running outside speedup-browser-startup" >&2
     return 1
   fi
 
@@ -137,7 +137,7 @@ status() {
 case ${1:-} in
 start | check | release | stop | status) "$1" ;;
 *)
-  echo "Usage: browser-boost start|check|release|stop|status" >&2
+  echo "Usage: speedup-browser-startup start|check|release|stop|status" >&2
   exit 1
   ;;
 esac

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "id": "io.github.agentrby.browser-boost",
-  "name": "Browser Boost",
+  "id": "io.github.agentrby.omarchy-speedup-browser-startup",
+  "name": "Speedup Browser Startup",
   "version": "0.1.0",
   "author": "agentrby",
   "license": "MIT",
@@ -12,5 +12,5 @@
   "entryPoints": {
     "service": "Service.qml"
   },
-  "homepage": "https://github.com/AgentRBY/omarchy-browser-boost"
+  "homepage": "https://github.com/AgentRBY/omarchy-speedup-browser-startup"
 }
