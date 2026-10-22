@@ -51,11 +51,37 @@ main_pid() {
   ((pid > 0)) && echo "$pid"
 }
 
-has_windows() {
-  local clients
-  clients=$(hyprctl clients -j) || return 0
+# The main PID can be a wrapper script that runs the browser without exec
+# (Brave Origin's does), and Chromium moves itself out of the unit's cgroup
+# into a scope of its own, so follow parentage, which survives the move.
+unit_pids() {
+  local main
+  main=$(main_pid) || return 0
+  ps -e -o pid=,ppid= | awk -v main="$main" '
+    { parent[$1] = $2 }
+    END {
+      for (pid in parent) {
+        ancestor = pid
+        while (ancestor != main && ancestor in parent) ancestor = parent[ancestor]
+        if (ancestor == main) print pid
+      }
+    }'
+}
 
-  jq -e --argjson pid "$1" 'any(.[]; .pid == $pid)' <<<"$clients" >/dev/null
+# The process holding the profile's singleton lock is the browser itself.
+unit_browser_pid() {
+  local lock profile
+  profile=$(profile_dir "$(unit_browser)") || return 1
+  lock=$(readlink "$config_dir/$profile/SingletonLock") || return 1
+  unit_pids | grep -qx "${lock##*-}" && echo "${lock##*-}"
+}
+
+has_windows() {
+  local clients pids
+  clients=$(hyprctl clients -j) || return 0
+  pids=$(unit_pids | jq -sc .) || return 0
+
+  jq -e --argjson pids "$pids" 'any(.[]; .pid as $pid | $pids | index($pid))' <<<"$clients" >/dev/null
   (($? != JQ_FALSE))
 }
 
@@ -96,8 +122,9 @@ unit_browser() {
 }
 
 needs_restart() {
-  local default_browser
-  [[ $(readlink "/proc/$1/exe") == *" (deleted)" ]] && return 0
+  local default_browser pid
+  pid=$(unit_browser_pid) || pid=$1
+  [[ $(readlink "/proc/$pid/exe") == *" (deleted)" ]] && return 0
 
   default_browser=$(browser_command) || return 1
   [[ $default_browser != "$(unit_browser)" ]]
@@ -108,7 +135,7 @@ check() {
   pid=$(main_pid) || return 0
   needs_restart "$pid" || return 0
   [[ -e $pacman_lock ]] && return 0
-  has_windows "$pid" && return 0
+  has_windows && return 0
 
   stop
   start
@@ -118,7 +145,7 @@ release() {
   local pid
   plugin_enabled && return 0
   pid=$(main_pid) || return 0
-  has_windows "$pid" && return 0
+  has_windows && return 0
 
   stop
 }
@@ -131,7 +158,7 @@ status() {
   fi
 
   echo "running: pid $pid, $(readlink "/proc/$pid/exe")"
-  has_windows "$pid" && echo "windows: open" || echo "windows: none"
+  has_windows && echo "windows: open" || echo "windows: none"
 }
 
 case ${1:-} in
