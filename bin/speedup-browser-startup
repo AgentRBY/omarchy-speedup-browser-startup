@@ -113,6 +113,15 @@ start() {
 }
 
 stop() {
+  local pid
+  # Behind a wrapper, the unit's SIGTERM only reaches the wrapper, and
+  # SIGKILLing the browser's children in the unit's cgroup makes it crash.
+  # Ask the browser to quit first.
+  if pid=$(unit_browser_pid) && [[ $pid != "$(main_pid)" ]]; then
+    kill "$pid" 2>/dev/null
+    timeout 10 tail --pid="$pid" -f /dev/null
+  fi
+
   systemctl --user stop "$unit" 2>/dev/null
   return 0
 }
